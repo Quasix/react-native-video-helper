@@ -271,9 +271,9 @@ public class MediaController {
         switch (quality) {
             default:
             case COMPRESS_QUALITY_LOW:
-                maxWidth = 720;
-                maxHeight = 720;
-                bitrate = 1300000;
+                maxWidth = 480;
+                maxHeight = 480;
+                bitrate = 600000;
                 break;
             case COMPRESS_QUALITY_MEDIUM:
                 maxWidth = 1280;
