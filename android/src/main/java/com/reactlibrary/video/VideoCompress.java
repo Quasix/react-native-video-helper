@@ -4,7 +4,6 @@ import android.os.AsyncTask;
 
 public class VideoCompress {
     private static final String TAG = VideoCompress.class.getSimpleName();
-    private static VideoCompressTask compression;
 
     public static VideoCompressTask compressVideo(String srcPath, String destPath, String quality, long startTime, long endTime, CompressListener listener) {
         int finalQuality = MediaController.COMPRESS_QUALITY_LOW;
@@ -15,13 +14,9 @@ public class VideoCompress {
             finalQuality = MediaController.COMPRESS_QUALITY_MEDIUM;
         }
 
-        compression = new VideoCompressTask(listener, finalQuality, startTime, endTime);
-        compression.execute(srcPath, destPath);
-        return compression;
-    }
-
-    public static void cancelCompress() {
-        compression.cancel(true);
+        VideoCompressTask task = new VideoCompressTask(listener, finalQuality, startTime, endTime);
+        task.execute(srcPath, destPath);
+        return task;
     }
 
     public static class VideoCompressTask extends AsyncTask<String, Float, Boolean> {
