@@ -38,6 +38,11 @@ public class RNVideoHelperModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
+  public void cancelCompress() {
+    VideoCompress.cancelCompress();
+  }
+
+  @ReactMethod
   public void compress(String source, ReadableMap options, final Promise pm) {
     String inputUri = Uri.parse(source).getPath();
     File outputDir = reactContext.getCacheDir();

@@ -30,11 +30,12 @@ export default {
   compress: (source, options) => {
     return new ProgressPromise((resolve, reject, progress) => {
       const subscription = videoHelperEmitter.addListener('progress', p => progress(p));
-  
+
       RNVideoHelper.compress(source, options).then(output => {
         subscription.remove();
         resolve(output);
       }).catch(err => reject(err));
     });
   },
+  cancelCompress: RNVideoHelper.cancelCompress,
 }
