@@ -39,7 +39,7 @@ public class RNVideoHelperModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void cancelCompressionTask() {
+  public void cancelCompress() {
     if (videoCompressTask != null) {
       videoCompressTask.cancel();
     }
