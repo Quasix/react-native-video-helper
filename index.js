@@ -37,5 +37,5 @@ export default {
       }).catch(err => reject(err));
     });
   },
-  cancelCompress: RNVideoHelper.cancelCompressionTask,
+  cancelCompress: RNVideoHelper.cancelCompress,
 }
