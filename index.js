@@ -37,5 +37,8 @@ export default {
       }).catch(err => reject(err));
     });
   },
-  cancelCompress: RNVideoHelper.cancelCompress,
+  cancelCompress: () => {
+    videoHelperEmitter.removeAllListeners('progress');
+    RNVideoHelper.cancelCompress();
+  },
 }
