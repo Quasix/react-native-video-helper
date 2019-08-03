@@ -13,12 +13,15 @@ import android.util.Log;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressLint("NewApi")
 public class MediaController {
     static final int COMPRESS_QUALITY_HIGH = 1;
     static final int COMPRESS_QUALITY_MEDIUM = 2;
     static final int COMPRESS_QUALITY_LOW = 3;
+
+    static int countBackgroundTask = 0;
 
     public static File cachedFile;
     public String path;
@@ -92,18 +95,20 @@ public class MediaController {
 
         private String videoPath;
         private String destPath;
+        AtomicBoolean compressionCancelled;
 
-        private VideoConvertRunnable(String videoPath, String destPath) {
+        private VideoConvertRunnable(String videoPath, String destPath, AtomicBoolean isCancelled) {
             this.videoPath = videoPath;
             this.destPath = destPath;
+            compressionCancelled.set(isCancelled.get());
         }
 
-        public static void runConversion(final String videoPath, final String destPath) {
+        public static void runConversion(final String videoPath, final String destPath, final AtomicBoolean isCancelled) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        VideoConvertRunnable wrapper = new VideoConvertRunnable(videoPath, destPath);
+                        VideoConvertRunnable wrapper = new VideoConvertRunnable(videoPath, destPath, isCancelled);
                         Thread th = new Thread(wrapper, "VideoConvertRunnable");
                         th.start();
                         th.join();
@@ -116,7 +121,7 @@ public class MediaController {
 
         @Override
         public void run() {
-            MediaController.getInstance().convertVideo(videoPath, destPath, 0, -1, -1,null);
+            MediaController.getInstance().convertVideo(compressionCancelled, videoPath, destPath, 0, -1, -1,null);
         }
     }
 
@@ -149,12 +154,12 @@ public class MediaController {
      * @param dest destination directory to put result
      */
 
-    public void scheduleVideoConvert(String path, String dest) {
-        startVideoConvertFromQueue(path, dest);
+    public void scheduleVideoConvert(String path, String dest, AtomicBoolean isCancelled) {
+        startVideoConvertFromQueue(path, dest, isCancelled);
     }
 
-    private void startVideoConvertFromQueue(String path, String dest) {
-        VideoConvertRunnable.runConversion(path, dest);
+    private void startVideoConvertFromQueue(String path, String dest, AtomicBoolean isCancelled) {
+        VideoConvertRunnable.runConversion(path, dest, isCancelled);
     }
 
     @TargetApi(16)
@@ -240,7 +245,8 @@ public class MediaController {
      * @return
      */
     @TargetApi(16)
-    public boolean convertVideo(final String sourcePath, String destinationPath, int quality, long startT, long endT, CompressProgressListener listener) {
+    public boolean convertVideo(AtomicBoolean isCancelled, String sourcePath, String destinationPath, int quality, long startT, long endT, CompressProgressListener listener) {
+        Log.i("VideoCompress", "count: " + countBackgroundTask);
         this.path=sourcePath;
 
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
@@ -352,6 +358,10 @@ public class MediaController {
                 extractor = new MediaExtractor();
                 extractor.setDataSource(inputFile.toString());
 
+                if (isCancelled.get()) {
+                    Log.e("check", "value of is cancelled" + isCancelled.get());
+                    throw new RuntimeException("Compression Cancelled");
+                }
 
                 if (resultWidth != originalWidth || resultHeight != originalHeight) {
                     int videoIndex;
@@ -479,8 +489,15 @@ public class MediaController {
                                     encoderInputBuffers = encoder.getInputBuffers();
                                 }
                             }
+//
+                            if (isCancelled.get()) throw new RuntimeException("Compression Cancelled");
 
                             while (!outputDone) {
+                                Log.e("Check1", "isCancelled:" + isCancelled.get());
+                                if (isCancelled.get()) {
+                                    Log.e("Check1", "isCancelled:" + isCancelled.get());
+                                    throw new RuntimeException("Compression Cancelled");
+                                }
                                 if (!inputDone) {
                                     boolean eof = false;
                                     int index = extractor.getSampleTrackIndex();
@@ -517,6 +534,11 @@ public class MediaController {
                                 boolean decoderOutputAvailable = !decoderDone;
                                 boolean encoderOutputAvailable = true;
                                 while (decoderOutputAvailable || encoderOutputAvailable) {
+                                    Log.e("Check2", "isCancelled:" + isCancelled.get());
+                                    if (isCancelled.get()) {
+                                        Log.e("Check2", "isCancelled:" + isCancelled.get());
+                                        throw new RuntimeException("Compression Cancelled");
+                                    }
                                     int encoderStatus = encoder.dequeueOutputBuffer(info, TIMEOUT_USEC);
                                     if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                                         encoderOutputAvailable = false;
@@ -688,6 +710,8 @@ public class MediaController {
                             encoder.stop();
                             encoder.release();
                         }
+
+                        if (isCancelled.get()) throw new RuntimeException("Compression Cancelled");
                     }
                 } else {
                     long videoTime = readAndWriteTrack(extractor, mediaMuxer, info, startTime, endTime, cacheFile, false);
@@ -760,8 +784,8 @@ public class MediaController {
         }
 */
 
-    //    cacheFile.delete();
-       // inputFile.delete();
+        //    cacheFile.delete();
+        // inputFile.delete();
         return true;
     }
 }

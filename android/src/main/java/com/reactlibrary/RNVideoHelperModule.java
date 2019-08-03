@@ -18,7 +18,7 @@ import java.util.UUID;
 import com.reactlibrary.video.*;
 
 public class RNVideoHelperModule extends ReactContextBaseJavaModule {
-  private VideoCompress.VideoCompressTask videoCompressTask = null;
+  private VideoCompressTask videoCompressTask = null;
 
   private void sendProgress(ReactContext reactContext, float progress) {
     reactContext
@@ -41,7 +41,7 @@ public class RNVideoHelperModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void cancelCompress() {
     if (videoCompressTask != null) {
-      videoCompressTask.cancel(true);
+      videoCompressTask.cancel();
     }
   }
 
@@ -52,12 +52,12 @@ public class RNVideoHelperModule extends ReactContextBaseJavaModule {
 
     final String outputUri = String.format("%s/%s.mp4", outputDir.getPath(), UUID.randomUUID().toString());
 
-    String quality = options.hasKey("quality") ? options.getString("quality") : "";
-    long startTime = options.hasKey("startTime") ? (long)options.getDouble("startTime") : -1;
-    long endTime = options.hasKey("endTime") ? (long)options.getDouble("endTime") : -1;
+    String quality = options.hasKey("quality") ? options.getString("quality") : "low";
+    long startTime = options.hasKey("startTime") ? (long) options.getDouble("startTime") : -1;
+    long endTime = options.hasKey("endTime") ? (long) options.getDouble("endTime") : -1;
 
-    try {
-      videoCompressTask = VideoCompress.compressVideo(inputUri, outputUri, quality, startTime, endTime, new VideoCompress.CompressListener() {
+    if (videoCompressTask == null) {
+      final CompressListener compressListener = new CompressListener() {
         @Override
         public void onStart() {
           //Start Compress
@@ -79,11 +79,19 @@ public class RNVideoHelperModule extends ReactContextBaseJavaModule {
 
         @Override
         public void onProgress(float percent) {
-          sendProgress(reactContext, percent/100);
+          sendProgress(reactContext, percent / 100);
         }
-      });
-    } catch ( Throwable e ) {
-      e.printStackTrace();
+
+        @Override
+        public void onCancel() {
+          videoCompressTask = null;
+          Log.e("INFO", "Compression cancelled");
+        }
+      };
+      videoCompressTask = new VideoCompressTask(compressListener, quality, startTime, endTime);
+      videoCompressTask.execute(inputUri, outputUri);
+    } else {
+      Log.e("VideoCompressTask", "exists");
     }
   }
 }
