@@ -733,7 +733,11 @@ public class MediaController {
                     try {
                         mediaMuxer.finishMovie(false);
                     } catch (Exception e) {
-                        Log.e("tmessages", e.getMessage());
+                        if (e.getMessage() != null) {
+                            Log.e("tmessages", e.getMessage());
+                        } else {
+                            Log.e("tmessages", "Unknown Error");
+                        }
                     }
                 }
                 Log.e("tmessages", "time = " + (System.currentTimeMillis() - time));
@@ -754,6 +758,10 @@ public class MediaController {
                 Log.e("file not Deleted :" , inputFile.getPath());
             }
         }*/
+
+       if (isCancelled.get() && cacheFile.exists()) {
+           cacheFile.delete();
+       }
 
         //inputFile.delete();
         Log.e("ViratPath",path+"");

@@ -68,13 +68,13 @@ public class VideoCompressTask extends AsyncTask<String, Float, Boolean> {
         }
     }
 
-//    @Override
-//    protected void onCancelled() {
-//        super.onCancelled();
-//        if(mListener != null) {
-//            mListener.onCancel();
-//        }
-//    }
+    @Override
+    protected void onCancelled() {
+        super.onCancelled();
+        if(mListener != null) {
+            mListener.onCancel();
+        }
+    }
 
     public void cancel() {
         isCancelled.set(true);
