@@ -5,13 +5,16 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 import com.reactlibrary.video.MediaController.CompressProgressListener;
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.ypresto.qtfaststart.QtFastStart;
 
 public class VideoCompressionTask extends AsyncTask<Void, Float, Boolean> {
 
   private static final String TAG = VideoCompressionTask.class.getSimpleName();
 
   private final String srcPath;
+  private final String intermediatePath;
   private final String destPath;
   private final VideoCompressionListener listener;
   private final String quality;
@@ -32,6 +35,8 @@ public class VideoCompressionTask extends AsyncTask<Void, Float, Boolean> {
     this.quality = quality;
     this.startTime = startTime;
     this.endTime = endTime;
+
+    this.intermediatePath = destPath + ".tmp";
   }
 
   static int toMediaControllerQuality(final String quality) {
@@ -41,6 +46,42 @@ public class VideoCompressionTask extends AsyncTask<Void, Float, Boolean> {
       return MediaController.COMPRESS_QUALITY_MEDIUM;
     }
     return MediaController.COMPRESS_QUALITY_LOW;
+  }
+
+  private static boolean fastStart(File input, File output) {
+    try {
+      if (!output.exists()) {
+        // if there is no output file we'll create one
+        output.createNewFile();
+      }
+    } catch (IOException e) {
+      Log.e(TAG, e.toString());
+    }
+
+    try {
+      // Adds moov to your input
+      return QtFastStart.fastStart(input, output);
+    } catch (QtFastStart.MalformedFileException m) {
+      Log.e(TAG, m.toString());
+    } catch (QtFastStart.UnsupportedFileException q) {
+      Log.e(TAG, q.toString());
+    } catch (IOException i) {
+      Log.e(TAG, i.toString());
+    }
+    return false;
+  }
+
+  private static boolean deleteFileIfExists(final String path) {
+    try {
+      final File file = new File(path);
+      if (file.exists()) {
+        Log.w(TAG, "deleting existing file");
+        return file.delete();
+      }
+    } catch (Exception e) {
+      Log.e(TAG, "Failed to delete destPath", e);
+    }
+    return false;
   }
 
   @Override
@@ -53,28 +94,20 @@ public class VideoCompressionTask extends AsyncTask<Void, Float, Boolean> {
 
   @Override
   protected Boolean doInBackground(Void... ignored) {
-    deleteDestPathFileIfExists();
-    return MediaController.getInstance().convertVideo(
+    cleanUp();
+
+    final boolean compressionResult = MediaController.getInstance().convertVideo(
         srcPath,
-        destPath,
+        intermediatePath,
         toMediaControllerQuality(quality),
         startTime,
         endTime,
         getListener(),
         isCancelled);
-  }
-
-  private boolean deleteDestPathFileIfExists() {
-    try {
-      final File file = new File(destPath);
-      if (file.exists()) {
-        Log.w(TAG, "deleting existing file");
-        return file.delete();
-      }
-    } catch (Exception e) {
-      Log.e(TAG, "Failed to delete destPath", e);
+    if (compressionResult) {
+      fastStart(new File(intermediatePath), new File(destPath));
     }
-    return false;
+    return compressionResult;
   }
 
   @NonNull
@@ -121,7 +154,12 @@ public class VideoCompressionTask extends AsyncTask<Void, Float, Boolean> {
   @Override
   protected void onCancelled() {
     super.onCancelled();
-    deleteDestPathFileIfExists();
+    cleanUp();
+  }
+
+  private void cleanUp() {
+    deleteFileIfExists(destPath);
+    deleteFileIfExists(intermediatePath);
   }
 
   public interface VideoCompressionListener {
