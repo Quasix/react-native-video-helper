@@ -104,8 +104,9 @@ public class VideoCompressionTask extends AsyncTask<Void, Float, Boolean> {
         endTime,
         getListener(),
         isCancelled);
-    if (compressionResult) {
-      fastStart(new File(intermediatePath), new File(destPath));
+    File intermediateFile = new File(intermediatePath);
+    if (intermediateFile.exists()) {
+      fastStart(intermediateFile, new File(destPath));
     }
     return compressionResult;
   }
